@@ -1,0 +1,20 @@
+CONVERTING
+processing raw vol files to netcdf = convert_results
+processing raw azi files to netcdf = convert_azi_results
+processing raw ele files to netcdf = convert_ele_results
+
+CALCULATING CALIB
+processing vert (90degree) netcdf files to get zdr = process_vert_scans 
+processing daily zdr files to get hourly data = process_hourly_zdr
+processing ppi scans to calculate zcalib = process_vol_scans
+
+APPLYING CALIB
+applying calibration offsets to sur scans = apply_calib
+applying calibration offsets to rhi scans = apply_calib_rhi
+
+
+2022 Chilbolton data
+convert_all_vol
+convert_all_azi
+convert_all_ele
+
