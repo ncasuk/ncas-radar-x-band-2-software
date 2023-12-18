@@ -183,6 +183,10 @@ def loop_over_hours(args):
                 print(f'[INFO] Already ran {dbz_file} successfully')
                 continue
 
+            if rh.get_result(identifier)=='bad_num':
+                print(f'[INFO] Already ran {dbz_file} with mismatched input/output vars')
+                continue
+
             #If there is no success identifier then continue processing the file
             # Remove previous results for this file
             rh.delete_result(identifier)
