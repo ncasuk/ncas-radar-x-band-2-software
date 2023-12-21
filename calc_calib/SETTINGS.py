@@ -1,8 +1,11 @@
+# Project Choice
+PROJ_NAME = 'woest'
+SCAN_TYPE = 'bl_scans'
+
+# LOTUS settings
 QUEUE = 'short-serial-4hr --account=short4hr'
 MAX_RUNTIME = '04:00:00'
 EST_RUNTIME = '01:00:00'
-PROJ_NAME = 'woest'
-SCAN_TYPE = 'bl_scans'
 
 # Range in which there is data for the project
 MIN_START_DATE = '20230501'
@@ -19,7 +22,8 @@ SCRIPT_DIR = f'/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-mobile-x-band-radar-2
 
 #Location for LOTUS output
 LOTUS_OUTPUT_PATH_BASE = f'/home/users/lbennett/logs/lotus-output/{PROJ_NAME}'
-LOTUS_DIR = f'{LOTUS_OUTPUT_PATH_BASE}/cals/nxpol2/bl_scans/'
+#LOTUS_DIR = f'{LOTUS_OUTPUT_PATH_BASE}/cals/nxpol2/{SCAN_TYPE}/'
+LOTUS_DIR = f'{LOTUS_OUTPUT_PATH_BASE}/cals/nxpol2/'
 
 #Location of weather station text files with daily rain amounts
 #WXDIR = f'/gws/nopw/j04/ncas_obs/amf/raw_data/ncas-aws-2/incoming/{PROJ_NAME}/NOAA/'
@@ -50,8 +54,8 @@ PHI_DIR = Z_CALIB_DIR+'phi_files/'
 # of the segment to exclude. The second tuple contains the start and 
 # stop azimuth of the segment to exclude.
 #Cloud scans
-EXCLUSIONS = [((0,2.6),(57,205)),((0,2.6),(284,313)),((3.4,3.6),(57,150)),((3.4,3.6),(270,315)),((4.4,7.6),(79,150)),((8.4,11.6),(76,93)),((8.4,11.6),(134,150)),((12.9,17.1),(75,103)),((12.9,17.1),(134,150))]
+#EXCLUSIONS = [((0,2.6),(57,205)),((0,2.6),(284,313)),((3.4,3.6),(57,150)),((3.4,3.6),(270,315)),((4.4,7.6),(79,150)),((8.4,11.6),(76,93)),((8.4,11.6),(134,150)),((12.9,17.1),(75,103)),((12.9,17.1),(134,150))]
 #BL scans
-#EXCLUSIONS = [((0,1.1),(0,360)),((1.4,2.6),(57,205)),((1.4,2.6),(284,313)),((3.4,3.6),(57,150)),((3.4,3.6),(299,315)),((4.9,6.6),(57,150))]
+EXCLUSIONS = [((0,1.1),(0,360)),((1.4,2.6),(57,205)),((1.4,2.6),(284,313)),((3.4,3.6),(57,150)),((3.4,3.6),(299,315)),((4.9,6.6),(57,150))]
 
 
