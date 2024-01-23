@@ -6,6 +6,8 @@ import matplotlib.ticker as mticks
 import pandas as pd
 import dateutil
 import dateutil.parser as dp
+import datetime as dt
+from datetime import timedelta
 import argparse
 import scipy.stats 
 import warnings
@@ -33,6 +35,8 @@ def arg_parse():
     parser.add_argument('-e', '--end_date', nargs='?', default=SETTINGS.MAX_END_DATE,
                         type=str, help=f'End date string in format YYYYMMDD, between '
                         f'{SETTINGS.MIN_START_DATE} and {SETTINGS.MAX_END_DATE}', metavar='')
+    parser.add_argument('-t','--scan',nargs=1, required=True, type=int,
+                        help=f'Choose BL (1) or cloud scans (2)',metavar='')
     
     return parser.parse_args()
 
@@ -47,6 +51,14 @@ def plot_zcalib(args):
 
     start_date = args.start_date
     end_date = args.end_date
+    scan = args.scan[0]
+    print(scan)
+    if scan==1:
+        scan_type = 'bl_scans'
+    elif scan==2:
+        scan_type = 'cloud_scans'
+    print(scan_type)
+
 
     start_date_dt = dp.parse(start_date) 
     end_date_dt = dp.parse(end_date) 
@@ -57,7 +69,10 @@ def plot_zcalib(args):
     if start_date_dt < min_date or end_date_dt > max_date:
         raise ValueError(f'Date must be in range {SETTINGS.MIN_START_DATE} - {SETTINGS.MAX_END_DATE}')
 
-    phi_dir = os.path.join(SETTINGS.PHI_DIR)
+    zcalib_dir=SETTINGS.Z_CALIB_DIR
+    phi_dir = zcalib_dir+scan_type+'/phi_files/'
+
+#    phi_dir = os.path.join(SETTINGS.PHI_DIR)
     img_dir = os.path.join(SETTINGS.Z_CALIB_DIR,'images/')
     if not os.path.exists(img_dir):
         os.makedirs(img_dir)
@@ -206,16 +221,17 @@ def plot_zcalib(args):
     #If you want to overlay number of rays for each data point then uncomment these lines.
     #May need some tweaking to get the yaxis scale correct for the data you are plotting. 
     ax2=ax1.twinx()
-    ax2.set_ylim(0,10000)
+    ax2.set_ylim(0,5000)
     ax2.plot(data.index, num_rays_day,'bx-')
-    ax2.set_yticks([5000, 10000])
+    ax2.set_yticks([2500, 5000])
     ax2.set_yticks([1000, 2000, 3000, 4000, 7500],minor=True)
     plt.ylabel('Total number of Rays',{'fontsize':18})
     plt.yticks(size=18)
     plt.xlim(start_date_dt,end_date_dt)
 
+    timestamp=dt.datetime.now().strftime("%Y%m%d-%H%M")
     #Save the plot
-    imgname = f'{img_dir}/Z_calibration_{start_date}_{end_date}_cloud_scans.png'
+    imgname = f'{img_dir}/Z_calibration_{start_date}_{end_date}_{scan_type}_{timestamp}.png'
     plt.tight_layout()
     plt.savefig(imgname,dpi=150)        
             

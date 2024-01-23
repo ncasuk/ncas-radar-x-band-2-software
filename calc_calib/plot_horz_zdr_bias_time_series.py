@@ -6,6 +6,9 @@ import pandas as pd
 import dateutil
 import dateutil.parser as dp
 import argparse
+import datetime as dt
+from datetime import timedelta
+from matplotlib.dates import (MO,TU,WE,TH,FR,SA,SU)
 
 import warnings
 import glob
@@ -33,7 +36,9 @@ def arg_parse():
                         type=str, help=f'End date string in format YYYYMMDD, between '
                         f'{SETTINGS.MIN_START_DATE} and {SETTINGS.MAX_END_DATE}', metavar='')
     parser.add_argument('-p','--make_plots',nargs=1, required=True, default=0, type=int,
-                        help=f'Make plots of the profiles if p is set to 1',metavar='')
+                        help=f'Make plots of individual days if p is set to 1 or the whole time period if p is set to 2',metavar='')
+    parser.add_argument('-t','--scan',nargs=1, required=True, type=int,
+                        help=f'Choose BL (1) or cloud scans (2)',metavar='')
     
     return parser.parse_args()
 
@@ -49,6 +54,13 @@ def plot_zdr(args):
     plot=args.make_plots[0]
     start_date = args.start_date
     end_date = args.end_date
+    scan = args.scan[0]
+    print(scan)
+    if scan==1:
+        scan_type = 'bl_scans'
+    elif scan==2:
+        scan_type = 'cloud_scans'
+    print(scan_type)
 
     start_date_dt = dp.parse(start_date) 
     end_date_dt = dp.parse(end_date) 
@@ -59,69 +71,90 @@ def plot_zdr(args):
     if start_date_dt < min_date or end_date_dt > max_date:
         raise ValueError(f'Date must be in range {SETTINGS.MIN_START_DATE} - {SETTINGS.MAX_END_DATE}')
 
-    outdir = os.path.join(SETTINGS.ZDR_CALIB_DIR,'horz/')
-    img_dir=os.path.join(outdir,'images')
+    #filesdir = os.path.join(SETTINGS.ZDR_CALIB_DIR,f'horz/{scan_type}')
+    filesdir = os.path.join(SETTINGS.ZDR_CALIB_DIR,f'horz/{scan_type}/no1point5/')
+    print(filesdir)
+    img_dir=os.path.join(SETTINGS.ZDR_CALIB_DIR,f'horz/images/')
     if not os.path.exists(img_dir):
         os.makedirs(img_dir)
+
     all_data=pd.DataFrame()
     
-    filelist = glob.glob(outdir + '*.csv')
+    filelist = glob.glob(filesdir + '/*.csv')
     filelist.sort()
-
-#for woest we have boundary layer and cloud scans, so need to separate out the zdr bias for each set
-#Even numbers are clouds, odd numbers are BL
+    #print(filelist)
 
     for f in range(0,len(filelist)):
         _file = filelist[f]
         print(_file)
         data = pd.read_csv(_file,index_col=0, parse_dates=True)
-        data = data.iloc[1::2, :]
-        if f==0:
-            print(data)
+        #data = data.iloc[1::2, :]
+        #if f==0:
+        #    print(data)
         all_data = pd.concat([all_data, data])
 
         if plot==1:
-            date = _file[-21:-13]
+            date = os.path.basename(_file)[0:8]
             fig,ax1=plt.subplots(figsize=(15,8))
             plt.plot(data.index,data['ZDR'], 'kx-',markersize='6',linewidth=2)
             plt.yticks(size=16)
             plt.xticks(size=16)
             plt.xlim(pd.to_datetime(date),pd.to_datetime(date) + pd.to_timedelta(24, unit='h'))
-            plt.ylim(-1,0.5)
+            plt.ylim(-0.5,1.0)
             plt.grid()
             plt.ylabel('Median ZDR (dB)', fontsize=18)
             plt.xlabel('Time (UTC)', fontsize=18) 
-            #img_name = f'{img_dir}/'+date+'_horz_zdr_15-18_cloud_scans.png'
-            img_name = f'{img_dir}/'+date+'_horz_zdr_15-18_BL_scans.png'
+            #img_name = f'{img_dir}/'+date+'_horz_zdr_{scan_type}.png'
+            img_name = f'{img_dir}/{date}_horz_zdr_{scan_type}.png'
             print('Saving single day',img_name)
             plt.savefig(img_name,dpi=150)
             plt.close()
 
-    median_bias=np.nanmedian(all_data.loc[start_date_dt:end_date_dt]['ZDR'])
-    print('Median Bias for whole period = ',median_bias)
-    zdr_med = all_data.resample('D').median()
-    zdr_std = all_data.resample('D').std()
+    overall_median=np.nanmedian(all_data.loc[start_date_dt:end_date_dt]['ZDR'])
+    overall_mean=np.nanmean(all_data.loc[start_date_dt:end_date_dt]['ZDR'])
+    overall_std=np.nanstd(all_data.loc[start_date_dt:end_date_dt]['ZDR'])
+    print('Median Bias for whole period = ',overall_median)
+    daily_mean = all_data.resample('D').mean()
+    daily_std = all_data.resample('D').std()
+    daily_med = all_data.resample('D').median()
+
+    x1=start_date_dt+timedelta(days=-1)
+    x2=end_date_dt+timedelta(days=1)
 
     if plot==2:
         plt.figure(figsize=(15,8))
-        plt.errorbar(zdr_med.index,zdr_med['ZDR'],yerr=zdr_std['ZDR'],color='black',fmt='o',
+        plt.errorbar(daily_mean.index,daily_mean['ZDR'],yerr=daily_std['ZDR'],color='black',fmt='o',
                      markersize='6', elinewidth=2,capsize=4)
+        #plt.plot(all_data.index,all_data['ZDR'],'kx',label='All data')
+#        plt.plot(daily_mean.index,daily_mean['ZDR'],'ro',label='Daily mean')
+        plt.plot(daily_med.index,daily_med['ZDR'],'go',label='Daily median')
+    
+        plt.plot([x1,x2],[overall_mean,overall_mean],'g-',label='Mean of all values')
+        plt.plot([x1,x2],[overall_mean+overall_std,overall_mean+overall_std],'g-.',label='Std of all values')
+        plt.plot([x1,x2],[overall_mean-overall_std,overall_mean-overall_std],'g-.')
+        plt.plot([x1, x2],[overall_median,overall_median],'r-',label='Median of all values')
+    
+        plt.legend()
+    
         plt.yticks(size=12)
         plt.xticks(size=12)
         plt.grid()
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%y'))
-        plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator(interval=1,byweekday=MO))
+        plt.gca().xaxis.set_minor_locator(mdates.DayLocator(interval=1))
         plt.xticks(rotation=90)
-        plt.ylim([-0.5, 1])
-        plt.xlim([start_date_dt,end_date_dt])
-        plt.title('Median bias ' + str(np.round(median_bias,2))) 
+        #plt.ylim([-0.5, 1])
+        plt.xlim([x1,x2])
+        title_str= 'Mean, Std, Median of all values = '\
+                    +str(round(overall_mean,2))+'+/-'+str(round(overall_std,2))\
+                    +', '+str(round(overall_median,2))
+        plt.title(title_str) 
         plt.ylabel('Horizontal ZDR Bias (dB)', fontsize=18)
         plt.xlabel('Date', fontsize=18)
-        plt.plot([start_date_dt, end_date_dt],[median_bias,median_bias],'r-',
-                      label="Median Bias = %s" % round(median_bias,2))
         plt.tight_layout()
 
-        img_name = f'{img_dir}/{start_date}_{end_date}_horz_zdr_BL_scans.png'
+        img_name = f'{img_dir}/{start_date}_{end_date}_horz_zdr_{scan_type}_no1point5.png'
+        print('Saving ',img_name)
         plt.savefig(img_name,dpi=150)
         plt.close()
 

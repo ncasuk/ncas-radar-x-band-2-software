@@ -32,12 +32,13 @@ def move_files(args):
     """
 
     basedir=SETTINGS.VOLUME_DIR
-
+    print(basedir)
     day=args.date[0]
     print('Processing ',day)
 
     filelist = [os.path.basename(x) for x in glob.glob(f'{basedir}{day}/*.nc')]
     filelist.sort()
+    print(filelist)
     for f in filelist:
         print('f=',f)
         src=f'{basedir}{day}/{f}'

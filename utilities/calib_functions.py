@@ -19,6 +19,7 @@ from scipy import signal
 
 plt.switch_backend('agg')
 
+warnings.filterwarnings("ignore", category=UserWarning) 
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
@@ -62,7 +63,7 @@ def process_zdr_scans(outdir,raddir,date,file,plot):
         #print(max_gate) 
 
        	try:
-            rhohv = copy.deepcopy(rad.fields['RhoHV']['data'])
+            rhohv = copy.deepcopy(rad.fields['RhoHVu']['data'])
             rhohv[rhohv.mask]=np.nan
             rhohv=rhohv.data
             uzh = copy.deepcopy(rad.fields['dBuZ']['data'])
@@ -72,10 +73,10 @@ def process_zdr_scans(outdir,raddir,date,file,plot):
             zdru[zdru.mask]=np.nan
             zdru=zdru.data
             #RV for radial velocity
-            rv = copy.deepcopy(rad.fields['V']['data'])
+            rv = copy.deepcopy(rad.fields['Vu']['data'])
             rv[rv.mask]=np.nan
             rv=rv.data
-            rv2 = copy.deepcopy(rad.fields['V']['data'])
+            rv2 = copy.deepcopy(rad.fields['Vu']['data'])
             rv2[rv2.mask]=np.nan
             rv2=rv2.data
 
@@ -117,12 +118,12 @@ def process_zdr_scans(outdir,raddir,date,file,plot):
         zdru_prof = np.nanmean(zdru,axis=0)
 
         #Threshold the data to select regions of rain
-        ind1 = np.logical_and(rhv_prof > 0.99, np.logical_and(uzh_prof > 0,  uzh_prof < 30, rv_prof <- 2))
+        ind1 = np.logical_and(rhv_prof > 0.99, np.logical_and(uzh_prof > 0,  uzh_prof < 30, rv_prof < -2))
         
         #Find data that meets these criteria, which are a good indication of rain. It will also find areas above the melting later, 
         #as snow has similar characteristics
               
-        #If no data exists, skip to next iteration of the loop i.e. next file
+    #If no data exists, skip to next iteration of the loop i.e. next file
         if np.sum(ind1==True)==0:
             print('no data meets criteria')
             continue
@@ -238,9 +239,9 @@ def process_zdr_scans(outdir,raddir,date,file,plot):
 
         #Create image filename 
         img_name = os.path.join(outdir,date,'vert_profs_' + daystr + '_' + timestr + '.png') 
-        if os.path.exists(img_name):
-            print('File already processed, image created')
-            continue
+        #if os.path.exists(img_name):
+        #    print('File already processed, image created')
+        #    continue
 
         #Count the number of data points
         nvals[F] = len(ind_rain)
@@ -252,9 +253,9 @@ def process_zdr_scans(outdir,raddir,date,file,plot):
 
         MLB[F] = rg[MLB_ind]
         #Save ZDR values 
-        med_zdr[F] = np.median(zdru_prof[ind_rain])
-        mean_zdr[F] = np.mean(zdru_prof[ind_rain])
-        std_zdr[F] = np.std(zdru_prof[ind_rain]) 
+        med_zdr[F] = np.nanmedian(zdru_prof[ind_rain])
+        mean_zdr[F] = np.nanmean(zdru_prof[ind_rain])
+        std_zdr[F] = np.nanstd(zdru_prof[ind_rain]) 
 
         #Make plot if user has requested them
         #This is a plot for every time step
@@ -585,7 +586,7 @@ def calc_hourly_ML(outdir,date):
             #ml_zdr=data[['MLB','ZDR']].between_time(beg,end,include_end=False)
             ml_zdr=data[['MLB','ZDR']].between_time(beg,end,inclusive='left')
         
-            #If there are less than 3 (out of 9) valid values, set all to NaN and continue
+            #If there are less than 3 (out of 6) valid values, set all to NaN and continue
             #Else calculate median value of melting layer height and ZDR
             if ml_zdr['MLB'].count()<3:
                 hourly_ml[hh]=float('nan')
@@ -939,6 +940,9 @@ def extract_ml_zdr(time, ml_zdr):
 #        return False
 #
 #--------------------------------------------------------------------------------------------------------------------------
+
+
+
 def identify_first_phase_ray(data, mask, starting_gate, window_size, filter_size, end_gate_limit, missing_points=0):
     valid_data = np.where(np.logical_or(mask,
                                         ~np.isfinite(data)),
@@ -970,6 +974,7 @@ def identify_first_phase_ray(data, mask, starting_gate, window_size, filter_size
             j += 1
 
 #--------------------------------------------------------------------------------------------------------------------------
+
 def calibrate_day_att(raddir, outdir, day, ml_zdr):
 
     ZDRmax = 2.0
@@ -999,8 +1004,7 @@ def calibrate_day_att(raddir, outdir, day, ml_zdr):
     ray_el = np.zeros((nfiles,ss))*np.nan
 
 
-   # for file in range(nfiles):
-    for file in range(1,nfiles,2):
+    for file in range(nfiles):
         print(file)
 
         #Read file
@@ -1137,7 +1141,6 @@ def calibrate_day_att(raddir, outdir, day, ml_zdr):
 
             #Check for all-nan array, go to next iteration of loop if so
             #if np.sum(np.isfinite(phidp_att)==True)==0:
-            #    print('2. all-nan array')
             #    continue
 
             #Find minimum value of PhiDP
@@ -1152,7 +1155,7 @@ def calibrate_day_att(raddir, outdir, day, ml_zdr):
 
             #If values exist, 
             if ind.size != 0:
-                #Find the index of the maximum value of PhiDP between 4 and 6
+               #Find the index of the maximum value of PhiDP between 4 and 6
                 ib = np.where(phidp_att==max(phidp_att[ind]))[0][0]
 
                 pdpmax = phidp_att[ib]
@@ -1260,16 +1263,18 @@ def calibrate_day_att(raddir, outdir, day, ml_zdr):
 
 
 #--------------------------------------------------------------------------------------------------------------------------
-def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr):
+
+def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr,scan_type):
     
-    filelist = glob.glob(datadir + date + '/*.nc')
+    filelist = glob.glob(datadir + date + '/' + scan_type + '/*.nc')
     filelist.sort()
     nfiles=len(filelist)
     
 #   T = np.zeros((nfiles))*np.nan
 #   num18 = np.zeros(nfiles)*np.nan
 #   stdZDR18  = np.zeros(nfiles)*np.nan
-    medZDR18  = np.zeros(nfiles)*np.nan
+#    medZDR18  = np.zeros(nfiles)*np.nan
+    medZDR18=[]
     T_arr = []
 
     
@@ -1279,13 +1284,14 @@ def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr):
         rad=pyart.io.read(filelist[file])
 
         #Create time array
-        time = rad.metadata['start_datetime']
-        hh = float(time[11:13])
-        mm = float(time[14:16])
-        ss = float(time[17:19])
+        timeT = rad.metadata['start_datetime']
+        print(timeT)
+        hh = float(timeT[11:13])
+        mm = float(timeT[14:16])
+        ss = float(timeT[17:19])
 #        T[file] = hh + mm/60.0 + ss/3600.0
 
-       	T_arr.append(time)
+       	#T_arr.append(time)
 
         #Extract dimensions
         Rdim = rad.ngates
@@ -1293,7 +1299,7 @@ def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr):
         Tdim = rad.nrays
         Adim = int(Tdim/Edim)
         
-       	exclusions = SETTINGS.EXCLUSIONS 
+       	exclusions = SETTINGS.EXCLUSIONS
         exclude_radials = np.any([np.all([rad.elevation['data']>=ele[0],
                                   rad.elevation['data']<ele[1],
                                   rad.azimuth['data']>=azi[0],
@@ -1312,13 +1318,14 @@ def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr):
 
             uzh = copy.deepcopy(rad.fields['dBuZ']['data'][az_index,:])#[rad.sweep_start_ray_index['data'][0]]
             uzh = uzh + zcorr
-            zdr = copy.deepcopy(rad.fields['ZDR']['data'][az_index,:])
-            rhohv = copy.deepcopy(rad.fields['RhoHV']['data'][az_index,:])
+            zdr = copy.deepcopy(rad.fields['ZDRu']['data'][az_index,:])
+            rhohv = copy.deepcopy(rad.fields['RhoHVu']['data'][az_index,:])
             phidp = copy.deepcopy(rad.fields['PhiDP']['data'][az_index,:])
             ind = phidp > 180
             phidp[ind] = phidp[ind] - 360
             ind = phidp < -180
             phidp[ind] = phidp[ind] + 360
+            sqi = copy.deepcopy(rad.fields['SQIu']['data'][az_index,:])
         except:
             print("Couldn't load all variables")    
             continue
@@ -1331,32 +1338,35 @@ def horiz_zdr(datadir, date, outdir, ml_zdr, zcorr):
         beam_height = beam_height[az_index,:]
 
         #Extract melting layer height for the given radar scan time to use as a threshold on data selection
-        mlh, _ = extract_ml_zdr(time, ml_zdr)
-
+        mlh, _ = extract_ml_zdr(timeT, ml_zdr)
+        print(mlh)
         zind = beam_height > mlh   
         uzh[zind==True] = np.nan    
         zdr[zind==True] = np.nan
         phidp[zind==True] = np.nan
         rhohv[zind==True] = np.nan
+        sqi[zind==True] = np.nan
 
         #Set first three range gates to NaN
         uzh[:,0:3] = np.nan
         zdr[:,0:3] = np.nan
         phidp[:,0:3] = np.nan
         rhohv[:,0:3] = np.nan
+        sqi[:,0:3] = np.nan
 
-        ind=np.all([rhohv>0.99, phidp>0, phidp<6, uzh>15, uzh<=18],axis=0)
+        ind=np.all([rhohv>0.99, sqi>0.3, phidp>0, phidp<6, uzh>15, uzh<=18],axis=0)
 #        ind=np.all([rhohv>0.99, phidp>0, phidp<6, uzh>18, uzh<=21],axis=0)
  #       ind=np.all([rhohv>0.99, phidp>0, phidp<6, uzh>21, uzh<=24],axis=0)
 #
-        if ind.sum() >0:
+        if ind.sum() >10:
 #           num18[file] = np.sum(ind==True)
 #           stdZDR18[file] = np.nanstd(zdr[ind==True])
-            medZDR18[file] = np.nanmedian(zdr[ind==True])
+       	    T_arr.append(timeT)
+            medZDR18.append(np.nanmedian(zdr[ind==True]))
 
        	del rad
         del zdr, rhohv, uzh, phidp
         gc.collect()
-    
+    print(T_arr) 
     return T_arr, medZDR18
 
