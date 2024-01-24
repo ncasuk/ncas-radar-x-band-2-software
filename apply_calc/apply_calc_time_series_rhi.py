@@ -101,7 +101,7 @@ def loop_over_days(args):
         sbatch_command = f"sbatch -p {SETTINGS.QUEUE} -t {SETTINGS.MAX_RUNTIME}" \
                          f" -o {lotus_logs}/{D}_{chunk_index}.out" \
                          f" -e {lotus_logs}/{D}_{chunk_index}.err" \
-                         f" --wrap=\"python {script_dir}/apply_calc_chunk_rhi.py \
+                         f" --wrap=\"python {script_dir}/apply_calc_chunk.py \
                                 -f {file_list} -g {scan_geom} -n {table}\""
 
         print(f"running {chunk_index}")

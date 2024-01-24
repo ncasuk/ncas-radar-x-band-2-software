@@ -20,15 +20,16 @@ LOTUS_OUTPUT_PATH_BASE = f'/home/users/lbennett/logs/lotus-output/{PROJ_NAME}'
 LOTUS_DIR = f'{LOTUS_OUTPUT_PATH_BASE}/cals/nxpol2/'
 
 #LOCATION OF SCRIPTS
-SCRIPT_DIR = f'/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-mobile-x-band-radar-2/apply_calc/'
+SCRIPT_DIR = f'/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/apply_calc/'
 
-#Location of uncalibrated/unprocessed files
-INPUT_DIR = f'/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/{PROJ_NAME}/cfradial/uncalib_v1/'
-OUTPUT_DIR = f'/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/{PROJ_NAME}/cfradial/calib_v1/'
+#Location of uncalibrated/level1 files
+INPUT_DIR = f'/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/{PROJ_NAME}/level1/'
+#Location of processed/level2 files
+OUTPUT_DIR = f'/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/{PROJ_NAME}/level2/'
 
 #Location of params files
-PARAMS_FILE = f'/home/users/lbennett/lrose/ingest_params/{PROJ_NAME}/RadxConvert.nxpol2_{PROJ_NAME}_sur.processed' 
-PARAMS_FILE_RHI = f'/home/users/lbennett/lrose/ingest_params/{PROJ_NAME}/RadxConvert.nxpol2_{PROJ_NAME}_rhi.processed' 
+PARAMS_FILE = f'/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/params/RadxConvert.nxpol2_{PROJ_NAME}_sur.level2' 
+PARAMS_FILE_RHI = f'/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/params/RadxConvert.nxpol2_{PROJ_NAME}_rhi.level2' 
 
 CHUNK_HOURS=6
 
