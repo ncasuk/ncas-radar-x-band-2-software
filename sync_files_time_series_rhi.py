@@ -1,11 +1,13 @@
-import SETTINGS
+import dateutil.parser as dp
+from datetime import date
 import os
 import re
 import argparse
 import dateutil.parser as dp
 from datetime import date
 import subprocess
-import pandas as pd
+import sys
+import SETTINGS_unfold as SETTINGS
 
 def arg_parse_all():
     """
@@ -23,18 +25,19 @@ def arg_parse_all():
                         default=SETTINGS.MAX_END_DATE,type=str, 
                         help=f'End date string in format YYYYMMDD, between '
                         f'{SETTINGS.MIN_START_DATE} and {SETTINGS.MAX_END_DATE}', metavar='')
+    parser.add_argument('-n', '--table_name', nargs=1, type=str, required=True,metavar='')
     
     return parser.parse_args()
 
 def loop_over_days(args):
  
     """ 
-    Runs process_volume_scans_day.py for each day in the given time range
     
     :param args: (namespace) Namespace object built from arguments parsed from command line
     """
 
-    today = date.today().strftime("%Y%m%d")
+    today = date.today().strftime("%Y-%m-%d")
+    table = args.table_name[0]
 
     #Set up directory for Lotus output files based on today's date
     if not os.path.exists(os.path.join(SETTINGS.LOTUS_DIR,today)):
@@ -53,32 +56,26 @@ def loop_over_days(args):
         raise ValueError(f'Date must be in range {SETTINGS.MIN_START_DATE} - {SETTINGS.MAX_END_DATE}')
 
     #list only date directories
-    inputdir = SETTINGS.ZDR_CALIB_DIR
-    outdir = SETTINGS.Z_CALIB_DIR
-
-    #read days_with_rain file and extract dates 
-    df=pd.read_csv(f"{inputdir}/days_with_rain.csv",index_col=0, parse_dates=True)
-    proc_dates = list(df.index.strftime("%Y%m%d"))
-    
-    #pattern = re.compile(r'(\d{8})')
-    #proc_dates = [x for x in os.listdir(inputdir) if pattern.match(x)]
-    #proc_dates.sort()
+    inputdir = "/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/woest/level2/rhi/"
+ 
+    pattern = re.compile(r'(\d{8})')
+    proc_dates = [x for x in os.listdir(inputdir) if pattern.match(x)]
+    proc_dates.sort()
 
     for day in proc_dates:
         day_dt=dp.parse(day);
         if day_dt >= start_date_dt and day_dt <= end_date_dt:
     
             print(day)
-        
-            output_base = f'{SETTINGS.LOTUS_DIR}/{today}'
     
             # command to submit to lotus
-            slurm_command = f"sbatch -A {SETTINGS.ACT} -p {SETTINGS.QUEUE} -q {SETTINGS.PART} -t {SETTINGS.MAX_RUNTIME} --mem=4000" \
-                             f" -o {output_base}/{day}_Z.out -e {output_base}/{day}_Z.err "\
-                             f"--wrap=\"python {SETTINGS.SCRIPT_DIR}/process_volume_scans_day_teamx.py -d {day}\""
+            sbatch_command = f"sbatch -p {SETTINGS.QUEUE} -t {SETTINGS.MAX_RUNTIME} --mem=4000 -o " \
+                             f"{SETTINGS.LOTUS_DIR}{today}/{day}_sync_files.out -e {SETTINGS.LOTUS_DIR}{today}/{day}_sync_files.err "\
+                             f"--wrap=\"python sync_files_day_rhi.py -d {day} -n {table}\""
     
-            print(f"[INFO] Running: {slurm_command}")
-            subprocess.call(slurm_command, shell=True)
+            subprocess.call(sbatch_command, shell=True)
+    
+            print(f"running {sbatch_command}")
    
 def main():
     """Runs script if called on command line"""
@@ -88,3 +85,4 @@ def main():
 
 if __name__ == '__main__':
     main() 
+ 

@@ -7,8 +7,10 @@ import gc
 import os
 import shutil
 import sys
-sys.path.insert(1, '/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-mobile-x-band-radar-2/calc_calib/')
+sys.path.insert(1, '/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/apply_calc/')
 import SETTINGS
+
+basedir = '/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/woest/level2/sur/'
 
 def arg_parse_day():
     """
@@ -31,37 +33,35 @@ def move_files(args):
     :param args: (namespace) Namespace object built from arguments parsed from command line
     """
 
-    basedir=SETTINGS.VOLUME_DIR
-    print(basedir)
     day=args.date[0]
     print('Processing ',day)
 
-    filelist = [os.path.basename(x) for x in glob.glob(f'{basedir}{day}/*.nc')]
+    filelist = [os.path.basename(x) for x in glob.glob(f'{basedir}{day}/*v1.0.0.nc')]
     filelist.sort()
-    print(filelist)
+    #print(filelist)
     for f in filelist:
-        print('f=',f)
+        #print('f=',f)
         src=f'{basedir}{day}/{f}'
-        print('src=',src)
+        #print('src=',src)
         rad = pyart.io.read(src,delay_field_loading=True)
         pw=rad.instrument_parameters['pulse_width']['data'][0]
         pw=pw*1000000
         #print(pw)
         if round(pw)==2:
             dst=f'{basedir}{day}/bl_scans/{f}'
-            print('dst=',dst)
+           # print('dst=',dst)
             bldir=f'{basedir}{day}/bl_scans'
             if not os.path.exists(bldir):
                 os.makedirs(bldir)
-            print('moving ',src,' to ',dst)
+           # print('moving ',src,' to ',dst)
             shutil.move(src,dst)
         elif round(pw)==0:
             dst=f'{basedir}{day}/cloud_scans/{f}'
-            print('dst=',dst)
+           # print('dst=',dst)
             cldir=f'{basedir}{day}/cloud_scans'
             if not os.path.exists(cldir):
                 os.makedirs(cldir)
-            print('moving ',src,' to ',dst)
+           # print('moving ',src,' to ',dst)
             shutil.move(src,dst)
         del rad
         gc.collect() 

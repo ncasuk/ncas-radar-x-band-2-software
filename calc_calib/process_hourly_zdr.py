@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/')
 import numpy as np
 import warnings
 import os
@@ -7,9 +9,10 @@ from utilities import calib_functions
 import re
 from abcunit_backend.database_handler import DataBaseHandler
 
+
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+#warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 def make_hourly_files():
 

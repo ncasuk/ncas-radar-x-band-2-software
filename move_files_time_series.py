@@ -7,7 +7,7 @@ import dateutil.parser as dp
 from datetime import date
 import subprocess
 import sys
-sys.path.insert(1, '/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-mobile-x-band-radar-2/calc_calib/')
+sys.path.insert(1, '/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/apply_calc/')
 import SETTINGS
 
 def arg_parse_all():
@@ -55,7 +55,7 @@ def loop_over_days(args):
         raise ValueError(f'Date must be in range {SETTINGS.MIN_START_DATE} - {SETTINGS.MAX_END_DATE}')
 
     #list only date directories
-    inputdir = SETTINGS.VOLUME_DIR
+    inputdir = '/gws/smf/j07/ncas_radar/data/ncas-radar-x-band-2/woest/level2/sur/'
  
     pattern = re.compile(r'(\d{8})')
     proc_dates = [x for x in os.listdir(inputdir) if pattern.match(x)]

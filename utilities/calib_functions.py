@@ -22,7 +22,7 @@ plt.switch_backend('agg')
 warnings.filterwarnings("ignore", category=UserWarning) 
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+#warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 #---------------------------------------------------------------------------------------
 #Extract Melting Layer and mean ZDR values from vertical scans and save to csv file'
@@ -566,57 +566,61 @@ def calc_hourly_ML(outdir,date):
     #Output file (hourly values for each day)
     file2 = os.path.join(outdir, date, 'hourly_ml_zdr.csv')
 
-    data = pd.read_csv(file1,index_col=0, parse_dates=True)
-
-    if data.empty==False:
-
-        hourly_ml = np.zeros(24)*np.nan
-        hourly_zdr = np.zeros(24)*np.nan
+    if os.path.exists(file1):
+        data = pd.read_csv(file1,index_col=0, parse_dates=True)
     
-        for hh in range(0,24):
-            beg=time(hh,0,0)
-            print(beg)
-            if hh==23:
-                end=time(23,59,0)            
-                print(end)
+        if data.empty==False:
+            hourly_ml = np.zeros(24)*np.nan
+            hourly_zdr = np.zeros(24)*np.nan
+        
+            for hh in range(0,24):
+                beg=time(hh,0,0)
+                print(beg)
+                if hh==23:
+                    end=time(23,59,0)            
+                    print(end)
+                else:
+                    end=time(hh+1,0,0)
+                    print(end)
+                #Find values of melting layer and median ZDR between each hourly period
+                #ml_zdr=data[['MLB','ZDR']].between_time(beg,end,include_end=False)
+                ml_zdr=data.between_time(beg,end,inclusive='left').copy()
+                print(ml_zdr)
+                #If there are less than 3 (out of 6) valid values, set all to NaN and continue
+                #Else calculate median value of melting layer height and ZDR
+                if ml_zdr['ZDR'].count()<3:
+                    hourly_ml[hh]=float('nan')
+                    hourly_zdr[hh]=float('nan')
+                    continue
+                else:
+                    M=ml_zdr['ZDR'].median()
+                    print('M=',M)
+                    #Median Absolute Deviation
+                    mad=1.4826*(abs(ml_zdr['ZDR']-M)).median()
+                    out=mad*2.5
+                    #Determine outliers and remove them
+                    ind = np.logical_or(ml_zdr['ZDR'] <= M-out, ml_zdr['ZDR'] >= M+out)
+                    ml_zdr[ind==True]=np.nan
+          
+                    hourly_ml[hh]=ml_zdr['MLB'].median()
+                    print(hourly_ml)
+                    hourly_zdr[hh]=ml_zdr['ZDR'].median()
+                    print(hourly_zdr)
+
+            print(hourly_ml)
+            print(hourly_zdr)
+            if np.isfinite(hourly_ml).any():      
+            
+                #Construct time array for hourly medians i.e. 00:30, 01:30
+                hourly_T = pd.to_datetime(date) + pd.timedelta_range('00:30:00','23:30:00',freq='1H')
+                hourly_ml_zdr = pd.DataFrame({'H_MLB' : hourly_ml, 'H_ZDR' : hourly_zdr}, index=hourly_T)
+            
+                hourly_ml_zdr = hourly_ml_zdr.dropna()
+                hourly_ml_zdr.to_csv(file2)
+            
+                return True        
             else:
-                end=time(hh+1,0,0)
-                print(end)
-            #Find values of melting layer and median ZDR between each hourly period
-            #ml_zdr=data[['MLB','ZDR']].between_time(beg,end,include_end=False)
-            ml_zdr=data[['MLB','ZDR']].between_time(beg,end,inclusive='left')
-        
-            #If there are less than 3 (out of 6) valid values, set all to NaN and continue
-            #Else calculate median value of melting layer height and ZDR
-            if ml_zdr['MLB'].count()<3:
-                hourly_ml[hh]=float('nan')
-                hourly_zdr[hh]=float('nan')
-                continue
-            else:
-                M=ml_zdr.median()
-        
-                #Median Absolute Deviation
-                mad=1.4826*(abs(ml_zdr-M)).median()
-                out=mad*2.5
-                ind = np.logical_or(ml_zdr <= M-out, ml_zdr >= M+out)
-        
-                ml_zdr[ind==True]=np.nan
-      
-                hourly_ml[hh]=ml_zdr['MLB'].median()
-                hourly_zdr[hh]=ml_zdr['ZDR'].median()
-           
-        if np.isfinite(hourly_ml).any():      
-        
-            #Construct time array for hourly medians i.e. 00:30, 01:30
-            hourly_T = pd.to_datetime(date) + pd.timedelta_range('00:30:00','23:30:00',freq='1H')
-            hourly_ml_zdr = pd.DataFrame({'H_MLB' : hourly_ml, 'H_ZDR' : hourly_zdr}, index=hourly_T)
-        
-            hourly_ml_zdr = hourly_ml_zdr.dropna()
-            hourly_ml_zdr.to_csv(file2)
-        
-            return True        
-        else:
-            return False
+                return False
 
 #------------------------------------------------------------------------------------------------------
 def extract_ml_zdr(time, ml_zdr):

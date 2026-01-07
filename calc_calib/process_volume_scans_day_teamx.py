@@ -10,11 +10,10 @@ from abcunit_backend.database_handler import DataBaseHandler
 import sys
 sys.path.append('/gws/pw/j07/ncas_obs_vol1/amf/software/ncas-radar-x-band-2/')
 import utilities
-from utilities import calib_functions
+from utilities import calib_functions_teamx
 
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-#warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 def arg_parse_day():
     """
@@ -57,13 +56,11 @@ def process_volume_scans(args):
 
     #Directory for output calibration data
     zdir=SETTINGS.Z_CALIB_DIR
-    #outdir= f'{zdir}/{scan_type}'
     outdir= f'{zdir}'
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    #rh = DataBaseHandler(table_name=f'process_vol_scans_nxpol2_{scan_type}')
-    rh = DataBaseHandler(table_name=f'process_vol_scans_nxpol2')
+    rh = DataBaseHandler(table_name=f'process_vol_scans_nxpol2_zdr2')
 
     identifier = f'{date}'
 
@@ -73,22 +70,16 @@ def process_volume_scans(args):
         print(f'[INFO] Already processed {date}')
 
     else:
-        mlfile = f'{zdrdir}/{date}/hourly_ml_zdr.csv'
-        if os.path.exists(mlfile):
-            print("found ml file, processing data")
-            ml_zdr = pd.read_csv(mlfile,index_col=0, parse_dates=True)
-            #raddir = os.path.join(inputdir, date,scan_type)
-            raddir = os.path.join(inputdir, date)
-            #print raddir, outdir, date
-            if calib_functions.calibrate_day_att(raddir, outdir, date, ml_zdr):
-                rh.insert_success(identifier)
-                print("File successfully processed")
-            else:
-                rh.insert_failure(identifier, 'no suitable rays')
-                print("No suitable rays")
+        fhfile = f'{zdrdir}/freezing_levels.csv'
+        fhdata = pd.read_csv(fhfile,index_col=0, parse_dates=True)
+        raddir = os.path.join(inputdir, date)
+        #print raddir, outdir, date
+        if calib_functions_teamx.calibrate_day_att(raddir, outdir, date, fhdata, 0.31):
+            rh.insert_success(identifier)
+            print("File successfully processed")
         else:
-            rh.insert_failure(identifier, 'no ml_zdr file')
-            print("No ml_zdr file")
+            rh.insert_failure(identifier, 'no suitable rays')
+            print("No suitable rays")
 
 def main():
     """Runs script if called on command line"""

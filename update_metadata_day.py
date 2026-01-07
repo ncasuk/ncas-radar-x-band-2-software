@@ -1,61 +1,52 @@
-import argparse
-from datetime import timedelta
-from datetime import date
-import dateutil.parser as dp
-import os
-#import convert
-#from convert import SETTINGS
 import SETTINGS
+import os
+import re
+import argparse
+import dateutil.parser as dp
+from datetime import date
+from datetime import timedelta
 import subprocess
-
+import glob
 
 def arg_parse_day():
     """
     Parses arguments given at the command line
-
     :return: Namespace object built from attributes parsed from command line.
     """
 
     parser = argparse.ArgumentParser()
-    type_choices = ['vol', 'ele', 'azi']
 
-    parser.add_argument('-t', '--scan_type', nargs=1, type=str,
-                        choices=type_choices, required=True,
-                        help=f'Type of scan, one of: {type_choices}',
-                        metavar='')
     parser.add_argument('-d', '--idate', nargs=1, type=str, required=True,
                         help=f'Date to find scans from, fromat YYYYMMDD, between '
                         f'{SETTINGS.MIN_START_DATE} and {SETTINGS.MAX_END_DATE}',
                         metavar='')
     parser.add_argument('-n', '--table_name', nargs=1, type=str, required=True,metavar='')
-
+    
     return parser.parse_args()
 
-
 def loop_over_chunks(args):
+ 
+    """ 
+    Runs update_metadata_chunk.py for each chunk of files in the given time range
+    
+    :param args: (namespace) Namespace object built from arguments parsed from command line
     """
-    Loops through a day in hour chunks of size SETTINGS.CHUNK_SIZE and submits
-    those times to convert_hour.py
 
-    :param args: (namespace) Namespace object built from attributes parsed
-    from the command line
-    """
     today = date.today().strftime("%Y%m%d")
-    #Set up directory for Lotus output files based on today's date
-    if not os.path.exists(os.path.join(SETTINGS.LOTUS_OUTPUT_PATH_BASE,today)):
-        os.makedirs(os.path.join(SETTINGS.LOTUS_OUTPUT_PATH_BASE,today))
-
-    scan_type = args.scan_type[0]
-    idate = args.idate[0]
     table = args.table_name[0]
+    idate = args.idate[0]
+
+    #Set up directory for Lotus output files based on today's date
+    if not os.path.exists(os.path.join(SETTINGS.LOTUS_DIR,today)):
+        os.makedirs(os.path.join(SETTINGS.LOTUS_DIR,today))
 
     try:
         day_date_time = dp.isoparse(idate)
     except ValueError:
         raise ValueError('[ERROR] Date format is incorrect, should be YYYYMMDD')
 
-    min_date = dp.isoparse(SETTINGS.MIN_START_DATE)
-    max_date = dp.isoparse(SETTINGS.MAX_END_DATE)
+    min_date = dp.parse(SETTINGS.MIN_START_DATE)
+    max_date = dp.parse(SETTINGS.MAX_END_DATE)
 
     if day_date_time < min_date or day_date_time > max_date:
         raise ValueError(f'Date must be in range {SETTINGS.MIN_START_DATE} - '
@@ -90,26 +81,25 @@ def loop_over_chunks(args):
         year=day_date_time.year
         month=day_date_time.month
         day=day_date_time.day
-#        output_base = SETTINGS.LOTUS_OUTPUT_PATH.format(year=day_date_time.year,
-#                                                       month=day_date_time.month,
-#                                                      day=day_date_time.day)
-        output_base = f'{SETTINGS.LOTUS_OUTPUT_PATH_BASE}/{today}/{idate}'
+
+        output_base = f'{SETTINGS.LOTUS_DIR}/{today}/{idate}'
 
         if not os.path.exists(output_base):
             os.makedirs(output_base)
 
-        output_base += f'/{hour_range}-{scan_type}'
+        output_base += f'/update_metadata_{hour_range}'
 
-        wrap_command = (f"python {script_directory}/convert_hour.py "
-                        f"-t {scan_type} {' '.join(hours)} -n {table}"
+        wrap_command = (f"python {script_directory}/update_metadata_hour.py "
+                        f"{' '.join(hours)} -n {table}"
                         )
 
-        slurm_command = f"sbatch -A {SETTINGS.ACT} -p {SETTINGS.PART} -q {SETTINGS.QUEUE} -t {SETTINGS.MAX_RUNTIME} --mem=4000" \
-                        f" -o {output_base}.out" \
-                        f" -e {output_base}.err" \
-                        f" --wrap=\"{wrap_command}\"" 
+        # command to submit to lotus
+        slurm_command = f"sbatch -A {SETTINGS.ACT} -p {SETTINGS.QUEUE} -q {SETTINGS.PART} -t {SETTINGS.MAX_RUNTIME} --mem=4000 " \
+                             f" -o {output_base}.out" \
+                             f" -e {output_base}.err"\
+                             f" --wrap=\"{wrap_command}\""
 
-        print(f"[INFO] Running: {slurm_command}")
+        print(f"running {slurm_command}")
         subprocess.call(slurm_command, shell=True)
 
 
@@ -119,6 +109,5 @@ def main():
     args = arg_parse_day()
     loop_over_chunks(args)
 
-
 if __name__ == '__main__':
-    main()
+    main() 

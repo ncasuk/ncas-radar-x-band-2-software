@@ -21,7 +21,7 @@ def arg_parse_chunk():
     """
 
     parser = argparse.ArgumentParser()
-    geom_choices = ['sur', 'rhi']
+    geom_choices = ['vol', 'rhi']
 #   type_choices = ['bl_scans', 'cloud_scans']
 
 #    parser.add_argument('-p', '--params_index', nargs=1, required=True, type=str, 
@@ -40,7 +40,7 @@ def arg_parse_chunk():
 def loop_over_files(args):
 
     scan_geom = args.scan_geom[0]
-    if scan_geom=='sur':
+    if scan_geom=='vol':
         params_file = f'{SETTINGS.PARAMS_FILE}'
     elif scan_geom=='rhi':
         params_file = f'{SETTINGS.PARAMS_FILE_RHI}'

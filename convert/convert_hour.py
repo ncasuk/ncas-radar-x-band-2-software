@@ -48,11 +48,11 @@ def _map_scan_type(type):
     """
 
     scan_dict = {
-        'vol': 'SUR',
-        'ele': 'RHI',
-        'azi': 'VER',
+        'vol': 'vol',
+        'ele': 'rhi',
+        'azi': 'birdbath',
         'SUR': 'vol',
-        'RHI': 'ele',
+        'RHI': 'rhi',
         'VER': 'azi'
     }
 
@@ -81,59 +81,31 @@ def _get_input_files(hour, scan_type):
                          'should be YYYYMMDDHH')
 
     files_path = SETTINGS.INPUT_DIR
+#    print(files_path)
     # They're all dirs but feels good to check
     dirs = [name for name in os.listdir(files_path) if os.path.isdir(os.path.join(files_path, name))]
-
-    """ if scan_type == 'vol':
-        pattern = re.compile(f"^{SETTINGS.PROJ_NAME}.*_.*.vol$")
-    elif scan_type == 'ele':
-        pattern = re.compile(f"^{SETTINGS.PROJ_NAME}_.*.ele$")
-    elif scan_type == 'azi':
-        pattern = re.compile(f"^{SETTINGS.PROJ_NAME}.*.azi$") """
+    print('dirs = ', dirs)
 
     # Pattern to find data folders (anything that has an underscore .scan_type)
-    pattern = re.compile(f"^.*_.*.{scan_type}$")
+    if scan_type == 'azi':
+        pattern = re.compile(f"^.*.azi$")
+    else:
+        pattern = re.compile(f"^.*_.*.{scan_type}$")
 
     filtered_dirs = [os.path.join(files_path, name) for name in dirs if pattern.match(name)]
-    #print(filtered_dirs) 
+    print('filtered dirs = ', filtered_dirs) 
     dbz_files = []
 
     for dr in filtered_dirs:
         target_dir = f'{dr}/{date_dir}'
-        #print(target_dir)
+        print(target_dir)
         if os.path.exists(target_dir):
             #print(target_dir)
             files = os.listdir(target_dir)
-            pattern = re.compile(f"^{hour}.*dBZv.{scan_type}$")
+            pattern = re.compile(f"^{hour}.*dBZ.{scan_type}$")
             dbz_files.extend([os.path.join(target_dir, fname) for fname in files if pattern.match(fname)])
     return sorted(set(dbz_files))
 
-
-#def _get_results_handler(n_facets, sep):
-#    """
-#    Returns a result handler which either uses a database or the file system
-#    depending on the SETTING.BACKEND.
-#    If using a database make sure there is an environment variable called
-#    $ABCUNIT_DB_SETTINGS which is set to "dbname=<db_name> user=<user_name>
-#    host=<host_name> password=<password>".
-#
-#    :param n_facets: (int) Number of facets used to define a result.
-#    :param sep: (str) Delimeter for facet separation in identifier.
-#    :param error_types: (list) List of the string names of the types of
-#    errors that can occur.
-#    """
-#
-## This function is not really needed because we are always going to be using db in the future.
-## For the moment it is useful to keep it in, just in case we want to revert to the file system method. 
-#
-#    if SETTINGS.BACKEND == 'db':
-#        return DataBaseHandler(table_name="convert_results")
-#    elif SETTINGS.BACKEND == 'file':
-#        base_path = '/home/users/jhaigh0/work/abcunit-radar/ncas-mobile-x-band-radar-1-software/convert/test/test_result_out'
-#        return FileSystemHandler(base_path, n_facets, sep, error_types)
-#    else:
-#        raise ValueError('SETTINGS.BACKEND is not set properly')
-#
 
 def loop_over_hours(args):
     """
@@ -161,7 +133,7 @@ def loop_over_hours(args):
         print(f'[INFO] Processing: {hour}')
 
         input_files = _get_input_files(hour, scan_type)
-
+        print(input_files)
         year, month, day = hour[:4], hour[4:6], hour[6:8]
         date = year + month + day
 
@@ -176,6 +148,7 @@ def loop_over_hours(args):
             
             #This is the file identifier used in the database
             identifier = f'{year}.{month}.{day}.{os.path.splitext(fname)[0]}'
+            print(identifier)
 
             # Check if this file has already been processed successfully
             #If yes, then go to the next iteration of the loop, i.e. next file
@@ -185,7 +158,7 @@ def loop_over_hours(args):
 
             if rh.get_result(identifier)=='bad_num':
                 print(f'[INFO] Already ran {dbz_file} with mismatched input/output vars')
-                continue
+                #continue
 
             #If there is no success identifier then continue processing the file
             # Remove previous results for this file
@@ -194,6 +167,16 @@ def loop_over_hours(args):
             # Get expected variables
             fname_base = fname[:16]
             time_digits = fname[8:14]
+
+#            #Check if the filename time is the actual starttime, as some data we didn't put the "time operator" in Rainbow in the correct place
+#
+#            result = subprocess.run(["grep", "-ira","<starttime>", dbz_file],capture_output=True, text=True)
+#            match = re.search(r"(\d{2}:\d{2}:\d{2})", result.stdout)
+#            real_starttime=match.group(0).replace(":", "")
+#            if time_digits==real_starttime:
+#                true_time_digits=time_digits
+#            else:
+#                true_time_digits=real_starttime
 
             pattern = f'{input_dir}/{fname_base}*.{scan_type}'
             expected_vars = set([os.path.splitext(os.path.basename(name)[16:])[0] for name in glob.glob(pattern)])
@@ -212,13 +195,15 @@ def loop_over_hours(args):
             scan_dir_name = None
 
             if mapped_scan_type == 'VER':
-                scan_dir_name = 'vert'
+                scan_dir_name = 'birdbath'
             else:
                 scan_dir_name = mapped_scan_type.lower()
 
             # This should probably be a default path that is formatted
+#            expected_file = f'{SETTINGS.OUTPUT_DIR}/{scan_dir_name}/{date}/' \
+#                            f'{SETTINGS.RADAR_LONG}_{SETTINGS.PLATFORM}_{date}-{true_time_digits}_{mapped_scan_type}_v1.0.0.nc'
             expected_file = f'{SETTINGS.OUTPUT_DIR}/{scan_dir_name}/{date}/' \
-                            f'{SETTINGS.RADAR_LONG}_{SETTINGS.PLATFORM}_{date}-{time_digits}_{mapped_scan_type}_v1.nc'
+                            f'{SETTINGS.RADAR_LONG}_{SETTINGS.PLATFORM}_{date}-{time_digits}_{mapped_scan_type}_v1.0.0.nc'
 
             # Read netcdf file to find variables
             # If the file can't be found, create a bad_output failure identifier
